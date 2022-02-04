@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# A simple bash script to read what course you want to take and return the hyperlink for the course
+
+# Array of browsers, doesn't support for all browsers yet
+browsers=(chrome firefox safari opera edge)
+
+# Making sure that the case is always lowercase
+declare -l default
+
+# Default browser is set to firefox
+default="firefox"
+
+# The location which we will use to store the file for persistance
+location="/usr/local/bin"
+
+# Function which does heavy lifting. 
+#	If an argument is provided, it updates default and the file .persistant
+#	If there is no file named ".persistant", then create one
+#	Update the value of default
+default_changing() {
+	if [[ -f "${location}/.persistant" && $# == 1 ]]; then
+		echo $1 > ${location}/.persistant
+		default=$1
+		exit 0
+	fi
+	
+	if [[ ! -f "${location}/.persistant" ]]; then
+		touch ${location}/.persistant
+		exit 0
+	fi
+
+	default=`cat ${location}/.persistant`
+}
+
+# Cases for flags
+#	-h => Is the help flag
+#	-d => default flag. If you provide an argument, then the value of default is changed, else the value of default is shown
+case $1 in
+	-h|--help)
+		echo -e "Type 'class (Class Name) (Class Number)' to open the link to the specific class.\n If you want to change the default browser, use the -d or --default flag. For the -d flag, type the second word if the browser has 2 words, such as chrome instead of Google Chrome."
+		exit 0
+	;;
+	-d|--default)
+		if [[ $# == 1 ]]; then
+			curr_brow=`cat ${location}/.persistant`
+			echo "The default is ${curr_brow}"
+			exit 0
+		fi
+		check=0
+		for i in ${browsers[@]}; do
+			if [[ ${i} == ${2,,} ]]; then
+				check=1
+			fi
+		done
+
+		if ((check)); then
+			default_changing ${2,,}
+			echo "The default browser has been changed to ${default}"
+			exit 0
+		fi
+		echo "The default browser has not been changed, make sure you entered the correct browser"
+		exit 0
+	;;
+esac
+
+# This is to check for validity
+if [[ $# != 2 ]]; then
+	echo "You have entered incorrect number of arguments, please enter only 2"
+	exit 1
+fi
+
+default_changing
+
+URL="https://courses.illinois.edu/schedule/2022/spring/${1^^}/${2^^}"
+
+# Specific flags depending on default browser
+case $default in
+	"chrome")
+		google-chrome-stable $URL
+		;;
+	"firefox")
+		firefox $URL
+		;;
+esac
